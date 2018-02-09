@@ -78,20 +78,6 @@ capture cmd inH = do
                     , fork $ pumpHandle2MVar Out cout eventsM
                     , fork $ pumpHandle2MVar Err cerr eventsM ]
 
-  -- wait for stdout+stderr handles to close, only then put exit code
-  fork $ do
-    mapM_ (mtake . snd) $ tail pumps
-    ec <- P.waitForProcess h
-    mput eventsM $ Exit (ec2n ec)
-
-    -- restore previous keyboard signal handler -- TODO race condition -- can't have parallel calls to `capture`
-    installHandler
-      keyboardSignal
-      oldKeyboardHandler
-      Nothing
-
-    return ()
-
   recordsM <- mvar
 
   -- consume Events until all 3 conditions satisfy: stdout and stderr closed, child process exited
@@ -123,5 +109,19 @@ capture cmd inH = do
 
            Exit _    -> loop $ childState {running = False}
            Signal _  -> loop childState
+
+  -- wait for stdout+stderr handles to close, only then put exit code
+  fork $ do
+    mapM_ (mtake . snd) $ tail pumps
+    ec <- P.waitForProcess h
+    mput eventsM $ Exit (ec2n ec)
+
+    -- restore previous keyboard signal handler -- TODO race condition -- can't have parallel calls to `capture`
+    installHandler
+      keyboardSignal
+      oldKeyboardHandler
+      Nothing
+
+    return ()
 
   return recordsM
