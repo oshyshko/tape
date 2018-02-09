@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 
-module Util where
+module ShortcutsAndStuff where
 
 import           Control.Concurrent      (forkFinally, forkIO, threadDelay)
 import           Control.Concurrent.MVar (MVar, newEmptyMVar, putMVar, takeMVar)
@@ -18,6 +18,7 @@ import           System.Exit             (ExitCode (..), exitWith)
 import qualified System.Exit             as SE
 import qualified System.Process          as P
 
+
 -- concurrency
 mvar :: IO (MVar a)
 mvar = newEmptyMVar
@@ -34,6 +35,7 @@ fork f = do
   tid <- forkFinally f (\_ -> putMVar mOnExit ())
   return (tid, mOnExit)
 
+
 -- time
 type Ms = Int
 
@@ -42,9 +44,11 @@ now = timeInMillis where
   timeInMicros = numerator . toRational . (* 1000000) <$> getPOSIXTime
   timeInMillis = (`div` 1000) . fromIntegral <$> timeInMicros
 
+
 -- pprint and debugging
 pprint :: L.ByteString -> String
 pprint = concatMap (`showHex` "") . L.unpack
+
 
 -- process
 die :: String -> IO a
@@ -71,6 +75,7 @@ waitFor h = let loop = P.getProcessExitCode h >>=
                           \case Nothing -> sleep 1000 >> loop
                                 Just ec -> return $ ec2n ec
               in loop
+
 
 -- serialization
 decodeList :: BI.Binary b => L.ByteString -> [b]

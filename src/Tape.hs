@@ -1,18 +1,17 @@
-{-# LANGUAGE LambdaCase    #-}
 -- for Binary
 {-# LANGUAGE DeriveGeneric #-}
 
-module Tape.Tape where
+module Tape where
 
-import           Control.Concurrent      (threadDelay)
 import           Control.Concurrent.MVar (MVar)
-import           Control.Monad           (foldM, mapM_, void, when)
+import           Control.Monad           (when)
 import           Control.Monad.Fix       (fix)
 import qualified Data.Binary             as BI
 import qualified Data.ByteString         as B
 import qualified Data.ByteString.Lazy    as L
 import           GHC.Generics            (Generic)
 import qualified GHC.IO.Handle           as H
+import           ShortcutsAndStuff
 import qualified System.Directory        as D
 import qualified System.Environment      as E
 import           System.IO               (Handle, hClose, hFlush, hPutStrLn,
@@ -21,7 +20,6 @@ import           System.IO.Error         (catchIOError)
 import           System.Posix.Signals    (Handler (CatchInfo), installHandler,
                                           keyboardSignal, siginfoSignal)
 import qualified System.Process          as P
-import           Util
 
 
 data Stream = In | Out | Err deriving (Generic, Show)
@@ -35,6 +33,7 @@ data Event  = Command FilePath [String] -- cwd cmd
 
 data Record = Record Ms Event deriving (Generic, Show)
 
+-- TODO remove Binary + Generic and make orphan instances outside?
 instance BI.Binary Stream
 instance BI.Binary Event
 instance BI.Binary Record
@@ -52,20 +51,19 @@ pumpHandle2MVar stream h m = fix $ \loop ->
                       else mput m (Close stream))
                (\_ -> mput m (Close stream))
 
-
-record :: [String] -> Handle -> IO ()
-record cmd hlog = do
+capture :: [String] -> Handle -> IO (MVar Record)
+capture cmd inH = do
   let p = (P.proc (head cmd) (tail cmd))
             { P.std_in  = P.CreatePipe
             , P.std_out = P.CreatePipe
             , P.std_err = P.CreatePipe }
 
-  cwd <- D.getCurrentDirectory
-
   eventsM <- mvar
+
+  cwd <- D.getCurrentDirectory
   mput eventsM $ Command cwd cmd
 
-  installHandler
+  oldKeyboardHandler <- installHandler
     keyboardSignal
     (CatchInfo (\i -> mput eventsM $ Signal . fromIntegral . siginfoSignal $ i))
     Nothing
@@ -76,18 +74,29 @@ record cmd hlog = do
   --      pass it to child process first + record exit code, then exit?
 
   -- convert child process events to a sequence of Events
-  pumps <- sequence [ fork $ pumpHandle2MVar In  stdin eventsM
-                    , fork $ pumpHandle2MVar Out cout  eventsM
-                    , fork $ pumpHandle2MVar Err cerr  eventsM ]
+  pumps <- sequence [ fork $ pumpHandle2MVar In  inH  eventsM
+                    , fork $ pumpHandle2MVar Out cout eventsM
+                    , fork $ pumpHandle2MVar Err cerr eventsM ]
 
   -- wait for stdout+stderr handles to close, only then put exit code
-  fork $ do mapM_ (mtake . snd) $ tail pumps
-            ec <- P.waitForProcess h
-            mput eventsM $ Exit (ec2n ec)
+  fork $ do
+    mapM_ (mtake . snd) $ tail pumps
+    ec <- P.waitForProcess h
+    mput eventsM $ Exit (ec2n ec)
+
+    -- restore previous keyboard signal handler -- TODO race condition -- can't have parallel calls to `capture`
+    installHandler
+      keyboardSignal
+      oldKeyboardHandler
+      Nothing
+
+    return ()
+
+  recordsM <- mvar
 
   -- consume Events until all 3 conditions satisfy: stdout and stderr closed, child process exited
   flip fix -- flip fix :: b -> ((b -> c) -> (b -> c)) -> c
-    (ChildState True True True) -- inital state
+    (ChildState True True True) -- initial state
     $ \loop childState ->
       when (childState /= ChildState False False False) $ do
         e <- mtake eventsM
@@ -95,8 +104,7 @@ record cmd hlog = do
         nowMs <- now
         let r = Record nowMs e
 
-        -- write to log
-        L.hPut hlog $ BI.encode r
+        mput recordsM r
 
         -- pass to child process
         case e of
@@ -116,46 +124,4 @@ record cmd hlog = do
            Exit _    -> loop $ childState {running = False}
            Signal _  -> loop childState
 
-
-replay :: Bool -> Handle -> IO ()
-replay withDelays hlog = do
-  records <- decodeList <$> L.hGetContents hlog
-
-  let (Record recordStartedMs _) = head records -- TODO the log is never empty, but good to have it fixed
-  replayStartedMs <- now
-
-  exitCodeMb <- foldM (\ecMb (Record ms event) -> do
-                  when withDelays $ do
-                    nowMs <- now
-                    let waitMs = max 0 $ (ms - recordStartedMs) - (nowMs - replayStartedMs)
-                    --                   \__ from recording __/   \__ replay lag comp. __/
-                    sleep waitMs
-
-                  case event of
-                    Command _ _ -> return ecMb
-                    Data s bs   -> do case s of In  -> return ()
-                                                Out -> B.hPut stdout bs
-                                                Err -> B.hPut stderr bs
-                                      return ecMb
-                    Close _     -> return ecMb
-                    Exit n      -> return $ Just n
-                    Signal _    -> return ecMb)
-                Nothing
-                records
-
-  case exitCodeMb of
-    Nothing -> exit 1 -- TODO report absence of exit code in the log? (possibly corrupted log)
-    Just n  -> exit n
-
--- TODO add an option to print human-readable time stamps? (in UTC TZ?)
-inspect :: Handle -> IO ()
-inspect hlog = do
-  records <- decodeList <$> L.hGetContents hlog
-  mapM_ (\(Record ms e) ->
-           putStrLn $ show ms ++ " -- " ++ showEvent e)
-        records
-
-showEvent :: Event -> String
-showEvent = \case
-  Data s bs -> show s ++ " <" ++ show (B.length bs) ++ ">"
-  e         -> show e
+  return recordsM
