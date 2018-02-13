@@ -34,7 +34,6 @@ fork f = do
   tid <- forkFinally f (\_ -> putMVar mOnExit ())
   return (tid, mOnExit)
 
-
 -- time
 type Ms = Int
 
@@ -43,11 +42,9 @@ now = timeInMillis where
   timeInMicros = numerator . toRational . (* 1000000) <$> getPOSIXTime
   timeInMillis = (`div` 1000) . fromIntegral <$> timeInMicros
 
-
 -- pprint and debugging
 pprint :: L.ByteString -> String
 pprint = concatMap (`showHex` "") . L.unpack
-
 
 -- process
 die :: String -> IO a

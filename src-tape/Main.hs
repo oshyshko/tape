@@ -23,7 +23,6 @@ data Tape = ModeRecord  {file :: Maybe String, command :: String, commandArgs ::
           | ModeInspect {file :: Maybe String}
             deriving (Data, Typeable, Show, Eq)
 
-
 main :: IO ()
 main = do
   m <- processArgs $ cmdArgsMode $ modes
@@ -43,7 +42,6 @@ main = do
         ModeReplay  fm withDelays  -> withBinaryFileOrHandle fm ReadMode  stdin  $ replay withDelays
         ModeInspect fm             -> withBinaryFileOrHandle fm ReadMode  stdin    inspect
 
-
 record :: [String] -> Handle -> IO ()
 record cmd logOutH = do
   recordsM <- capture cmd stdin
@@ -57,7 +55,6 @@ record cmd logOutH = do
     case r of
       Record _ (Exit _) -> return ()
       _                 -> loop
-
 
 replay :: Bool -> Handle -> IO ()
 replay withDelays logInH = do
@@ -92,7 +89,6 @@ replay withDelays logInH = do
     Nothing -> exit 1 -- TODO report broken log if there's no Exit in the end
     Just n  -> exit n
 
-
 -- TODO add an option to print human-readable time stamps? (in UTC TZ?)
 inspect :: Handle -> IO ()
 inspect logInH = do
@@ -102,12 +98,10 @@ inspect logInH = do
            putStrLn $ show ms ++ " -- " ++ showEvent e)
         records
 
-
 showEvent :: Event -> String
 showEvent = \case
   Data s bs -> show s ++ " <" ++ show (B.length bs) ++ ">"
   e         -> show e
-
 
 helpPage :: String
 helpPage = unlines
