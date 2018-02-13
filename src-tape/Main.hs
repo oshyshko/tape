@@ -87,9 +87,9 @@ replay withDelays logInH = do
                 Nothing
                 records
 
-  -- TODO report a broken log if there were records after Exit or in case of multiple Exits
+  -- TODO report broken log if there were records after Exit or multiple Exits
   case exitCodeMb of
-    Nothing -> exit 1 -- TODO report a broken log in the absence of exit code
+    Nothing -> exit 1 -- TODO report broken log if there's no Exit in the end
     Just n  -> exit n
 
 
