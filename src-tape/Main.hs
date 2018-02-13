@@ -18,29 +18,30 @@ import           System.IO                       (Handle, IOMode (..), stderr,
                                                   stdin, stdout, withBinaryFile)
 import           Tape
 
-data Tape = MRecord  {file :: Maybe String, command :: String, commandArgs :: [String]}
-          | MReplay  {file :: Maybe String, delays :: Bool}
-          | MInspect {file :: Maybe String}
+data Tape = ModeRecord  {file :: Maybe String, command :: String, commandArgs :: [String]}
+          | ModeReplay  {file :: Maybe String, delays :: Bool}
+          | ModeInspect {file :: Maybe String}
             deriving (Data, Typeable, Show, Eq)
 
 
 main :: IO ()
 main = do
   m <- processArgs $ cmdArgsMode $ modes
-         [ MRecord  { file        = def
-                    , command     = def &= argPos 0
-                    , commandArgs = def &= args }
-         , MReplay  { file        = def
-                    , delays      = def}
-         , MInspect { file        = def} ]
+         [ ModeRecord  { file        = def
+                       , command     = def &= argPos 0
+                       , commandArgs = def &= args } &= explicit &= name "record"
+         , ModeReplay  { file        = def
+                       , delays      = def }         &= explicit &= name "replay"
+         , ModeInspect { file        = def }         &= explicit &= name "inspect"
+         ]
 
   if isJust $ cmdArgsHelp m
     then putStrLn helpPage
     else
       case cmdArgsValue m of
-        MRecord  fm cName cArgs -> withBinaryFileOrHandle fm WriteMode stdout $ Main.record (cName:cArgs)
-        MReplay  fm withDelays  -> withBinaryFileOrHandle fm ReadMode  stdin  $ replay withDelays
-        MInspect fm             -> withBinaryFileOrHandle fm ReadMode  stdin    inspect
+        ModeRecord  fm cName cArgs -> withBinaryFileOrHandle fm WriteMode stdout $ Main.record (cName:cArgs)
+        ModeReplay  fm withDelays  -> withBinaryFileOrHandle fm ReadMode  stdin  $ replay withDelays
+        ModeInspect fm             -> withBinaryFileOrHandle fm ReadMode  stdin    inspect
 
 
 record :: [String] -> Handle -> IO ()
@@ -62,7 +63,8 @@ replay :: Bool -> Handle -> IO ()
 replay withDelays logInH = do
   records <- decodeList <$> L.hGetContents logInH
 
-  let (Record recordStartedMs _) = head records -- TODO the log is never empty, but it would be good to check it
+  -- TODO the log is never empty, but it would be good to check it
+  let (Record recordStartedMs _) = head records
   replayStartedMs <- now
 
   -- deserialize Records and send to stdout/stderr

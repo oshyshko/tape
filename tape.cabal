@@ -29,7 +29,7 @@ library
   ghc-options:         -Wall
                        -fwarn-incomplete-patterns
                        -fno-warn-unused-do-bind
-                       -fno-warn-unused-imports
+                       -- -fno-warn-unused-imports
 
 executable tape
   hs-source-dirs:      src-tape
@@ -44,4 +44,4 @@ executable tape
                        -- -rtsopts=all -prof
                        -fwarn-incomplete-patterns
                        -fno-warn-unused-do-bind
-                       -fno-warn-unused-imports
+                       -- -fno-warn-unused-imports
