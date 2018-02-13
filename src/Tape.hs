@@ -8,14 +8,10 @@ import           Control.Monad           (when)
 import           Control.Monad.Fix       (fix)
 import qualified Data.Binary             as BI
 import qualified Data.ByteString         as B
-import qualified Data.ByteString.Lazy    as L
 import           GHC.Generics            (Generic)
-import qualified GHC.IO.Handle           as H
 import           ShortcutsAndStuff
 import qualified System.Directory        as D
-import qualified System.Environment      as E
-import           System.IO               (Handle, hClose, hFlush, hPutStrLn,
-                                          stderr, stdin, stdout)
+import           System.IO               (Handle, hClose, hFlush)
 import           System.IO.Error         (catchIOError)
 import           System.Posix.Signals    (Handler (CatchInfo), installHandler,
                                           keyboardSignal, siginfoSignal)
@@ -80,8 +76,23 @@ capture cmd inH = do
 
   recordsM <- mvar
 
+  -- wait for stdout+stderr handles to close, only then put exit code
+  fork $ do
+    mapM_ (mtake . snd) $ tail pumps
+    ec <- P.waitForProcess h
+    mput eventsM $ Exit (ec2n ec)
+
+    -- TODO race condition: can't call again, until results from preceding `capture` are fully pumped out
+    -- restore previous keyboard signal handler
+    installHandler
+      keyboardSignal
+      oldKeyboardHandler
+      Nothing
+
+    return ()
+
   -- consume Events until all 3 conditions satisfy: stdout and stderr closed, child process exited
-  flip fix -- flip fix :: b -> ((b -> c) -> (b -> c)) -> c
+  fork $ flip fix -- flip fix :: b -> ((b -> c) -> (b -> c)) -> c
     (ChildState True True True) -- initial state
     $ \loop childState ->
       when (childState /= ChildState False False False) $ do
@@ -97,7 +108,7 @@ capture cmd inH = do
            Command _ _ -> loop childState
            Data s bs -> do case s of
                              In  -> catchIOError (B.hPut cin bs >> hFlush cin)
-                                                 (\_ -> hClose stdin)
+                                                 (\_ -> hClose inH)
                              Out -> return ()
                              Err -> return ()
                            loop childState
@@ -109,19 +120,5 @@ capture cmd inH = do
 
            Exit _    -> loop $ childState {running = False}
            Signal _  -> loop childState
-
-  -- wait for stdout+stderr handles to close, only then put exit code
-  fork $ do
-    mapM_ (mtake . snd) $ tail pumps
-    ec <- P.waitForProcess h
-    mput eventsM $ Exit (ec2n ec)
-
-    -- restore previous keyboard signal handler -- TODO race condition -- can't have parallel calls to `capture`
-    installHandler
-      keyboardSignal
-      oldKeyboardHandler
-      Nothing
-
-    return ()
 
   return recordsM
