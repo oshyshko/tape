@@ -2,21 +2,20 @@
 
 module ShortcutsAndStuff where
 
-import           Control.Concurrent      (forkFinally, forkIO, threadDelay)
-import           Control.Concurrent.MVar (MVar, newEmptyMVar, putMVar, takeMVar)
-import           Control.Exception       (uninterruptibleMask_)
-import           Control.Monad           (when)
-import qualified Data.Binary             as BI
-import qualified Data.Binary.Get         as BIG
-import qualified Data.ByteString         as B
-import qualified Data.ByteString.Lazy    as L
-import           Data.Ratio              (numerator)
-import           Data.Time.Clock.POSIX   (getPOSIXTime)
-import           GHC.Conc.Sync           (ThreadId)
-import           Numeric                 (showHex)
-import           System.Exit             (ExitCode (..), exitWith)
-import qualified System.Exit             as SE
-import qualified System.Process          as P
+import           Control.Concurrent            (forkFinally, threadDelay)
+import           Control.Concurrent.MVar       (MVar, newEmptyMVar, putMVar,
+                                                takeMVar)
+import qualified Data.Binary                   as BI
+import           Data.Binary.Get               (Decoder (..), runGetIncremental)
+import qualified Data.ByteString.Lazy          as L
+import qualified Data.ByteString.Lazy.Internal as L
+import           Data.Ratio                    (numerator)
+import           Data.Time.Clock.POSIX         (getPOSIXTime)
+import           GHC.Conc.Sync                 (ThreadId)
+import           Numeric                       (showHex)
+import           System.Exit                   (ExitCode (..), exitWith)
+import qualified System.Exit                   as SE
+import qualified System.Process                as P
 
 
 -- concurrency
@@ -76,14 +75,20 @@ waitFor h = let loop = P.getProcessExitCode h >>=
                                 Just ec -> return $ ec2n ec
               in loop
 
-
 -- serialization
-decodeList :: BI.Binary b => L.ByteString -> [b]
-decodeList bs
-   | L.null bs = []
-   | otherwise =
-      let (x, xs, _) = BIG.runGetState BI.get bs 0 -- TODO migrate to runGetIncremental
-      in x : decodeList xs
-
 encodeList :: BI.Binary b => [b] -> L.ByteString
 encodeList xs = L.concat $ map BI.encode xs
+
+decodeList :: BI.Binary b => L.ByteString -> [b]
+decodeList = go decoder where
+  decoder = runGetIncremental BI.get
+  go (Done leftover _ b) bs = let next = L.chunk leftover bs in
+                              b `seq` b : if L.null next
+                                            then []
+                                            else go decoder next
+  go (Partial k)         bs = go (k (takeHeadChunk bs)) (dropHeadChunk bs)
+  go (Fail _ offset msg) _  = error ("decodeList at position " ++ show offset ++ ": " ++ msg)
+  takeHeadChunk             = \case (L.Chunk bs _) -> Just bs
+                                    _              -> Nothing
+  dropHeadChunk             = \case (L.Chunk _ bs) -> bs
+                                    _              -> L.Empty
