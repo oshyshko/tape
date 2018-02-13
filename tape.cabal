@@ -3,8 +3,8 @@ version:             0.1.0.0
 -- synopsis:
 -- description:
 homepage:            https://github.com/oshyshko/tape
-license:             BSD3
-license-file:        LICENSE
+license:             OtherLicense
+license-file:        LICENSE.txt
 author:              Oleksandr Shyshko
 maintainer:          oshyshko@gmail.com
 copyright:           2018 Oleksandr Shyshko
