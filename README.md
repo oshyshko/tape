@@ -62,7 +62,7 @@ $ stack install
 Copyright © 2018 Oleksandr Shyshko
 
 The use and distribution terms for this software are covered by the
-Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0.php)
+Eclipse Public License 2.0 (https://www.eclipse.org/org/documents/epl-2.0/EPL-2.0.txt)
 which can be found in the file LICENSE at the root of this distribution.
 
 By using this software in any fashion, you are agreeing to be bound by the terms of this license.
