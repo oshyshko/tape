@@ -4,7 +4,7 @@ version:             0.1.0.0
 -- description:
 homepage:            https://github.com/oshyshko/tape
 license:             OtherLicense
-license-file:        LICENSE.txt
+license-file:        LICENSE
 author:              Oleksandr Shyshko
 maintainer:          oshyshko@gmail.com
 copyright:           2018 Oleksandr Shyshko
