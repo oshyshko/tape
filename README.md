@@ -1,29 +1,30 @@
-# tape
 ```
+$ tape --help
+
 `tape` records and replays stdout/stderr produced by a command.
 
 Usage:
-  tape record  [-f=file] -- command [args]
-  tape replay  [-f=file]
-  tape inspect [-f=file] [-d]
+  tape record  [-f <file.rec>] -- <command> [command-args]
+  tape replay  [-f <file.rec>] [-d]
+  tape inspect [-f <file.rec>]
 
 Flags:
-  -f --file=file  Use a file instead of stdin/stdout
-  -d --delays     Reproduce delays (off by default)
+  -f --file <file.rec>  Use a file instead of stdin/stdout
+  -d --delays           Reproduce delays (off by default)
 
 Examples:
-  tape record -- traceroute 8.8.8.8 > log.rec
+  tape record -- ping 8.8.8.8 > log.rec
   cat log.rec | tape replay -d
   cat log.rec | tape inspect
 ```
 
 ## Example
 ```
-$ tape record -f log.rec -- ping 8.8.8.8
+$ tape record -- ping 8.8.8.8 > log.rec
 <wait few seconds>
 ^C
 
-$ tape replay -f log.rec
+$ cat log.rec | tape replay -d
 PING 8.8.8.8 (8.8.8.8): 56 data bytes
 64 bytes from 8.8.8.8: icmp_seq=0 ttl=46 time=13.834 ms
 64 bytes from 8.8.8.8: icmp_seq=1 ttl=46 time=14.210 ms
@@ -36,7 +37,7 @@ PING 8.8.8.8 (8.8.8.8): 56 data bytes
 6 packets transmitted, 6 packets received, 0.0% packet loss
 round-trip min/avg/max/stddev = 13.834/14.383/15.961/0.717 ms
 
-$ tape inspect -f log.rec -d
+$ cat log.rec | tape inspect
 1516736561054 -- Command "/home/john/" ["ping","8.8.8.8"]
 1516736561070 -- Out <94>
 1516736562075 -- Out <56>
@@ -51,9 +52,12 @@ $ tape inspect -f log.rec -d
 1516736566578 -- Exit 0
 ```
 
-## Building
+## Installation
 
+Install [Stack](https://docs.haskellstack.org/en/stable/install_and_upgrade/).
 ```
+$ git https://github.com/oshyshko/tape.git
+$ cd tape
 $ stack install
 ```
 

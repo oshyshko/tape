@@ -1,6 +1,7 @@
-.idea
-.stack-work
-out
-*.iml
-*.rec
+.DS_Store
+.stack-work*
+.hie
+*.lock
+*.prof*
+*.cabal
 tape
