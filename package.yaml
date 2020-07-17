@@ -1,0 +1,53 @@
+name:                tape
+version:             0.1.0.0
+github:              "oshyshko/tape"
+license:             BSD3
+license-file:        LICENSE
+copyright:           2018 Oleksandr Shyshko
+author:              Oleksandr Shyshko
+maintainer:          oshyshko@gmail.com
+
+ghc-options:
+- -Wall
+- -fno-warn-unused-do-bind
+- -O2
+- -optc-O3
+- -Widentities
+- -Wincomplete-uni-patterns
+- -Wincomplete-record-updates
+- -Wcompat
+- -Wredundant-constraints
+- -fhide-source-paths
+- -freverse-errors
+
+default-extensions:
+- BangPatterns
+- DeriveGeneric
+- DeriveDataTypeable
+- FlexibleContexts
+- LambdaCase
+- MultiWayIf
+- OverloadedStrings
+- RecordWildCards
+- ScopedTypeVariables
+# - StrictData <-- keep commented or cmdargs fails for "tape --help"
+
+executables:
+  tape:
+    main: MainExe.hs
+    source-dirs: src
+    dependencies:
+    - base
+    - binary
+    - bytestring
+    - cmdargs
+    - directory
+    - flat
+    - process
+    - time
+    - mtl
+    - unix
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
