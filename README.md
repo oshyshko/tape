@@ -56,7 +56,7 @@ $ cat log.rec | tape inspect
 
 Install [Stack](https://docs.haskellstack.org/en/stable/install_and_upgrade/).
 ```
-$ git https://github.com/oshyshko/tape.git
+$ git clone https://github.com/oshyshko/tape.git
 $ cd tape
 $ stack install
 ```
