@@ -1,4 +1,6 @@
-module Main where
+module Main
+       ( main
+       ) where
 
 import           Control.Concurrent.MVar (takeMVar)
 import           Control.Monad           (foldM, when)

@@ -1,6 +1,7 @@
-module Args ( getHelpOrMode
-            , TapeMode(..)
-            ) where
+module Args
+       ( TapeMode (..)
+       , getHelpOrMode
+       ) where
 
 import           System.Console.CmdArgs          (Data, Typeable, argPos, args,
                                                   cmdArgsHelp, cmdArgsMode,

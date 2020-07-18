@@ -1,4 +1,14 @@
-module Util where
+module Util
+       ( Ms
+       , fork
+       , now
+       , die
+       , exit
+       , ec2n
+       , n2ec
+       , sleep
+       , waitFor
+       ) where
 
 import           Control.Concurrent      (forkFinally, threadDelay)
 import           Control.Concurrent.MVar (MVar, newEmptyMVar, putMVar)
@@ -21,7 +31,9 @@ fork f = do
 type Ms = Int
 
 now :: IO Ms
-now = timeInMillis where
+now =
+    timeInMillis
+  where
     timeInMicros = numerator . toRational . (* 1000000) <$> getPOSIXTime
     timeInMillis = (`div` 1000) . fromIntegral <$> timeInMicros
 

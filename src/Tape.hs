@@ -1,13 +1,14 @@
-module Tape ( Record (..)
-            , Event (..)
-            , Stream (..)
-            , Exe
-            , ExeArg
-            , capture
-            , encode
-            , encodeList
-            , decodeList
-            ) where
+module Tape
+       ( Record (..)
+       , Event (..)
+       , Stream (..)
+       , Exe
+       , ExeArg
+       , capture
+       , encode
+       , encodeList
+       , decodeList
+       ) where
 
 import           Control.Concurrent.MVar       (MVar, newEmptyMVar, putMVar,
                                                 takeMVar)
@@ -34,28 +35,31 @@ import           Util                          (Ms, ec2n, fork, now)
 type Exe    = String
 type ExeArg = String
 
-data Stream = In | Out | Err
-            deriving (Generic, Show)
+data Stream
+    = In | Out | Err
+    deriving (Generic, Show)
 
-data Event  = Command Exe [ExeArg] -- cwd cmd
-            | Data Stream B.ByteString
-            | Close Stream
-            | Exit Int
-            | Signal Int
-            deriving (Generic, Show)
+data Event
+    = Command Exe [ExeArg]
+    | Data Stream B.ByteString
+    | Close Stream
+    | Exit Int
+    | Signal Int
+    deriving (Generic, Show)
 
-data Record = Record Ms Event
-            deriving (Generic, Show)
+data Record
+    = Record Ms Event
+    deriving (Generic, Show)
 
 instance BI.Binary Stream
 instance BI.Binary Event
 instance BI.Binary Record
 
 data ChildState = ChildState
-                { outOpen :: Bool
-                , errOpen :: Bool
-                , running :: Bool }
-                deriving (Eq, Show)
+    { outOpen :: Bool
+    , errOpen :: Bool
+    , running :: Bool
+    } deriving (Eq, Show)
 
 pumpHandle2MVar :: Stream -> Handle -> MVar Event -> IO ()
 pumpHandle2MVar stream h m =
